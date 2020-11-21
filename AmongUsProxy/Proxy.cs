@@ -1,45 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Impostor.Api.Net.Messages;
-using Impostor.Hazel;
-using Impostor.Hazel.Extensions;
-using Impostor.Hazel.Udp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.ObjectPool;
 using PcapDotNet.Core;
 using PcapDotNet.Packets;
+using Impostor.Hazel;
+using Impostor.Api.Net.Messages;
+using Impostor.Hazel.Udp;
+using Impostor.Hazel.Extensions;
 
 namespace AmongUsProxy
 {
     internal static class Program
     {
+        // Also this probably needs to be read from a config?
         private const string DeviceName = "Realtek";
-
-        private static readonly Dictionary<byte, string> TagMap = new Dictionary<byte, string>
-        {
-            {0, "HostGame"},
-            {1, "JoinGame"},
-            {2, "StartGame"},
-            {3, "RemoveGame"},
-            {4, "RemovePlayer"},
-            {5, "GameData"},
-            {6, "GameDataTo"},
-            {7, "JoinedGame"},
-            {8, "EndGame"},
-            {9, "GetGameList"},
-            {10, "AlterGame"},
-            {11, "KickPlayer"},
-            {12, "WaitForHost"},
-            {13, "Redirect"},
-            {14, "ReselectServer"},
-            {16, "GetGameListV2"}
-        };
 
         private static IServiceProvider _serviceProvider;
         private static ObjectPool<MessageReader> _readerPool;
 
-        private static void Main(string[] args)
+        private static void Main()
         {
             var services = new ServiceCollection();
             services.AddHazel();
@@ -50,7 +31,7 @@ namespace AmongUsProxy
             var devices = LivePacketDevice.AllLocalMachine;
             if (devices.Count == 0)
             {
-                Console.WriteLine("No interfaces found! Make sure WinPcap is installed.");
+                Console.WriteLine("No interfaces found! Make sure WinPcap/Npcap is installed.");
                 return;
             }
 
@@ -63,6 +44,7 @@ namespace AmongUsProxy
 
             using (var communicator = device.Open(65536, PacketDeviceOpenAttributes.Promiscuous, 1000))
             {
+                // Best we can do?
                 using (var filter = communicator.CreateFilter("udp and port 22023"))
                 {
                     communicator.SetFilter(filter);
@@ -70,6 +52,7 @@ namespace AmongUsProxy
 
                 communicator.ReceivePackets(0, PacketHandler);
             }
+            Console.WriteLine("Listening...");
         }
 
         private static void PacketHandler(Packet packet)
@@ -78,7 +61,6 @@ namespace AmongUsProxy
             var ipSrc = ip.Source.ToString();
             var udp = ip.Udp;
 
-            // True if this is our own packet.
             using (var stream = udp.Payload.ToMemoryStream())
             {
                 using var reader = _readerPool.Get();
@@ -102,6 +84,7 @@ namespace AmongUsProxy
                     reader.Seek(reader.Position + 1);
                 }
 
+                // This is kinda shite
                 var isSent = ipSrc.StartsWith("192.");
 
                 while (true)
@@ -132,25 +115,25 @@ namespace AmongUsProxy
 
         private static void HandleToClient(string source, IMessageReader packet)
         {
-            var tagName = TagMap.ContainsKey(packet.Tag) ? TagMap[packet.Tag] : "Unknown";
+            var tagName = Enum.GetName(typeof(MessageFlags), packet.Tag) ?? "Unknown";
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"{source,-15} Client received: {packet.Tag,-2} {tagName}");
+            Console.WriteLine($"{source,-15} To Client: {packet.Tag,-2} {tagName}");
 
             switch (packet.Tag)
             {
-                case 14:
-                case 13:
+                case MessageFlags.Redirect:
+                case MessageFlags.ReselectServer:
                     // packet.Position = packet.Length;
                     break;
-                case 0:
+                case MessageFlags.HostGame:
                     Console.WriteLine("- GameCode        " + packet.ReadInt32());
                     break;
-                case 5:
-                case 6:
+                case MessageFlags.GameData:
+                case MessageFlags.GameDataTo:
                     Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToArray().Take(packet.Length).ToArray()));
                     // packet.Position = packet.Length;
                     break;
-                case 7:
+                case MessageFlags.JoinedGame:
                     Console.WriteLine("- GameCode        " + packet.ReadInt32());
                     Console.WriteLine("- PlayerId        " + packet.ReadInt32());
                     Console.WriteLine("- Host            " + packet.ReadInt32());
@@ -161,7 +144,7 @@ namespace AmongUsProxy
                         Console.WriteLine("-     PlayerId    " + packet.ReadPackedInt32());
                     }
                     break;
-                case 10:
+                case MessageFlags.AlterGame:
                     Console.WriteLine("- GameCode        " + packet.ReadInt32());
                     Console.WriteLine("- Flag            " + packet.ReadSByte());
                     Console.WriteLine("- Value           " + packet.ReadBoolean());
@@ -171,21 +154,21 @@ namespace AmongUsProxy
 
         private static void HandleToServer(string source, IMessageReader packet)
         {
-            var tagName = TagMap.ContainsKey(packet.Tag) ? TagMap[packet.Tag] : "Unknown";
+            var tagName = Enum.GetName(typeof(MessageFlags), packet.Tag) ?? "Unknown";
             Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine($"{source,-15} Server received: {packet.Tag,-2} {tagName}");
+            Console.WriteLine($"{source,-15} To Server: {packet.Tag,-2} {tagName}");
 
             switch (packet.Tag)
             {
-                case 0:
+                case MessageFlags.HostGame:
                     Console.WriteLine("- GameInfo length " + packet.ReadBytesAndSize().Length);
                     break;
-                case 1:
+                case MessageFlags.JoinGame:
                     Console.WriteLine("- GameCode        " + packet.ReadInt32());
                     Console.WriteLine("- Unknown         " + packet.ReadByte());
                     break;
-                case 5:
-                case 6:
+                case MessageFlags.GameData:
+                case MessageFlags.GameDataTo:
                     Console.WriteLine("- GameCode        " + packet.ReadInt32());
                     Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToArray().Take(packet.Length).ToArray()));
                     // packet.Position = packet.Length;
