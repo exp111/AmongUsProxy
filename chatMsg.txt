@@ -1,0 +1,25 @@
+Chat Msg:
+01 00 9e 15 00 05
+72 32 4a 8c 0e 00 02 
+18 0d 0b 4c 69 67 68 74 20 67 72 65 65 6e
+
+01 => Reliable
+00 9e
+
+15 00 => Length
+05 => Tag
+
+72 32 4a 8c => Game Code
+0e 00 => Length
+02 => Tag
+18 => TargetNetId
+0d => msg type/callId
+0b => Length: 0b = 11
+
+4c 69 67 68 74 20 67 72 65 65 6e => "Light green"
+
+
+StartRpc:
+StartMessage
+WritePacked TargetNetId
+Write callId
