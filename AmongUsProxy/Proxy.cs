@@ -13,26 +13,6 @@ using System.Diagnostics;
 
 namespace AmongUsProxy
 {
-    public enum MessageFlags : byte
-    {
-        HostGame = 0,
-        JoinGame = 1,
-        StartGame = 2,
-        RemoveGame = 3,
-        RemovePlayer = 4,
-        GameData = 5,
-        GameDataTo = 6,
-        JoinedGame = 7,
-        EndGame = 8,
-        GetGameList = 9,
-        AlterGame = 10,
-        KickPlayer = 11,
-        WaitForHost = 12,
-        Redirect = 13,
-        ReselectServer = 14,
-        GetGameListV2 = 16,
-    }
-
     internal static class Program
     {
         // Also this probably needs to be read from a config?
@@ -66,6 +46,9 @@ namespace AmongUsProxy
             using (var communicator = device.Open(65536, PacketDeviceOpenAttributes.Promiscuous, 1000))
             {
                 // Best we can do?
+                //FIXME: sometimes we use another port
+                //InnerNetClient_SetEndpoint sets port (mostly 22023)
+                //in ServerManager_TrackServerFailure a other port
                 using (var filter = communicator.CreateFilter("udp and port 22023"))
                 {
                     communicator.SetFilter(filter);
@@ -73,7 +56,6 @@ namespace AmongUsProxy
 
                 communicator.ReceivePackets(0, PacketHandler);
             }
-            Console.WriteLine("Listening...");
         }
 
         private static void PacketHandler(Packet packet)
@@ -118,11 +100,11 @@ namespace AmongUsProxy
                     using var message = reader.ReadMessage();
                     if (isSent)
                     {
-                        HandleToServer(ipSrc, message);
+                        Handler.HandleToServer(ipSrc, message);
                     }
                     else
                     {
-                        HandleToClient(ipSrc, message);
+                        Handler.HandleToClient(ipSrc, message);
                     }
 
                     if (message.Position < message.Length)
@@ -131,72 +113,6 @@ namespace AmongUsProxy
                         Console.WriteLine("- Did not consume all bytes.");
                     }
                 }
-            }
-        }
-
-        private static void HandleToClient(string source, IMessageReader packet)
-        {
-            var tagName = Enum.GetName(typeof(MessageFlags), packet.Tag) ?? "Unknown";
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"{source,-15} To Client: {packet.Tag,-2} {tagName}");
-
-            switch ((MessageFlags)packet.Tag)
-            {
-                case MessageFlags.Redirect:
-                case MessageFlags.ReselectServer:
-                    // packet.Position = packet.Length;
-                    break;
-                case MessageFlags.HostGame:
-                    Console.WriteLine($"- GameCode        {packet.ReadInt32()}");
-                    break;
-                case MessageFlags.GameData:
-                    Handler.HandleGameData(false, packet);
-                    break;
-                case MessageFlags.GameDataTo:
-                    Handler.HandleGameData(true, packet);
-                    // packet.Position = packet.Length;
-                    break;
-                case MessageFlags.JoinedGame:
-                    Console.WriteLine($"- GameCode        {packet.ReadInt32()}");
-                    Console.WriteLine($"- PlayerId        {packet.ReadInt32()}");
-                    Console.WriteLine($"- Host            {packet.ReadInt32()}");
-                    var playerCount = packet.ReadPackedInt32();
-                    Console.WriteLine($"- PlayerCount     {playerCount}");
-                    for (var i = 0; i < playerCount; i++)
-                    {
-                        Console.WriteLine($"-     PlayerId    {packet.ReadPackedInt32()}");
-                    }
-                    break;
-                case MessageFlags.AlterGame:
-                    Console.WriteLine($"- GameCode        {packet.ReadInt32()}");
-                    Console.WriteLine($"- Flag            {packet.ReadSByte()}");
-                    Console.WriteLine($"- Value           {packet.ReadBoolean()}");
-                    break;
-            }
-        }
-
-        private static void HandleToServer(string source, IMessageReader packet)
-        {
-            var tagName = Enum.GetName(typeof(MessageFlags), packet.Tag) ?? "Unknown";
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine($"{source,-15} To Server: {packet.Tag,-2} {tagName}");
-
-            switch ((MessageFlags)packet.Tag)
-            {
-                case MessageFlags.HostGame:
-                    Console.WriteLine($"- GameInfo Length {packet.ReadBytesAndSize().Length}");
-                    break;
-                case MessageFlags.JoinGame:
-                    Console.WriteLine($"- GameCode        {packet.ReadInt32()}");
-                    Console.WriteLine($"- MapPurchase     {packet.ReadPackedUInt32()}");
-                    break;
-                case MessageFlags.GameData:
-                    Handler.HandleGameData(false, packet);
-                    break;
-                case MessageFlags.GameDataTo:
-                    Handler.HandleGameData(true, packet);
-                    //Console.WriteLine("- GameCode        " + packet.ReadInt32());                    // packet.Position = packet.Length;
-                    break;
             }
         }
     }
