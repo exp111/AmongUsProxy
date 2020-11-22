@@ -175,6 +175,9 @@ namespace AmongUsProxy
 							var netId = reader.ReadPackedUInt32();
 							Console.WriteLine($"NetID {netId}");
 							using var objReader = reader.ReadMessage();
+							if (objReader.Length < 0)
+								continue;
+
 							// Deserialize
 							switch (prefabID)
 							{
