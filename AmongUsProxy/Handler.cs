@@ -55,9 +55,8 @@ namespace AmongUsProxy
 						HandleRPC(netID, reader);
 						break;
 					default:
-						var readPos = reader.Offset + reader.Position;
 						Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
-							GetRange(readPos, reader.Length).ToArray()));
+							GetRange(reader.Offset, reader.Length).ToArray()));
 						break;
 				}
 			}
@@ -79,9 +78,8 @@ namespace AmongUsProxy
 					Console.WriteLine($"{netID} killed someone");
 					break;
 				default:
-					var readPos = packet.Offset + packet.Position;
 					Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
-							GetRange(readPos, packet.Length).ToArray()));
+							GetRange(packet.Offset, packet.Length).ToArray()));
 					break;
 			}
 		}
