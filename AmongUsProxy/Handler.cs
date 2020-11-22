@@ -3,6 +3,7 @@ using Impostor.Api.Net.Messages;
 using Impostor.Hazel;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -67,7 +68,7 @@ namespace AmongUsProxy
 		{
 			var tagName = Enum.GetName(typeof(MessageFlags), packet.Tag) ?? "Unknown";
 			Console.ForegroundColor = ConsoleColor.Cyan;
-			Console.WriteLine($"{source,-15} To Client: {packet.Tag,-2} {tagName}");
+			Debug.WriteLine($"{source,-15} To Client: {packet.Tag,-2} {tagName}");
 
 			switch ((MessageFlags)packet.Tag)
 			{
@@ -76,7 +77,7 @@ namespace AmongUsProxy
 					// packet.Position = packet.Length;
 					break;
 				case MessageFlags.HostGame:
-					Console.WriteLine($"- GameCode        {packet.ReadInt32()}");
+					Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
 					break;
 				case MessageFlags.GameData:
 					HandleGameData(false, packet);
@@ -86,15 +87,15 @@ namespace AmongUsProxy
 					// packet.Position = packet.Length;
 					break;
 				case MessageFlags.JoinedGame:
-					Console.WriteLine($"- GameCode        {packet.ReadInt32()}");
-					Console.WriteLine($"- ClientId        {packet.ReadInt32()}");
-					Console.WriteLine($"- HostId          {packet.ReadInt32()}");
+					Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
+					Debug.WriteLine($"- ClientId        {packet.ReadInt32()}");
+					Debug.WriteLine($"- HostId          {packet.ReadInt32()}");
 					var playerCount = packet.ReadPackedUInt32();
-					Console.WriteLine($"- PlayerCount     {playerCount}");
+					Debug.WriteLine($"- PlayerCount     {playerCount}");
 					for (var i = 0; i < playerCount; i++)
 					{
 						var playerId = packet.ReadPackedUInt32();
-						Console.WriteLine($"-     PlayerId    {playerId}");
+						Debug.WriteLine($"-     PlayerId    {playerId}");
 						// do we need those PlayerIds?
 						/*if (!Clients.ContainsKey(playerId))
 						{
@@ -103,9 +104,9 @@ namespace AmongUsProxy
 					}
 					break;
 				case MessageFlags.AlterGame:
-					Console.WriteLine($"- GameCode        {packet.ReadInt32()}");
-					Console.WriteLine($"- Flag            {packet.ReadSByte()}");
-					Console.WriteLine($"- Value           {packet.ReadBoolean()}");
+					Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
+					Debug.WriteLine($"- Flag            {packet.ReadSByte()}");
+					Debug.WriteLine($"- Value           {packet.ReadBoolean()}");
 					break;
 			}
 		}
@@ -115,16 +116,16 @@ namespace AmongUsProxy
 		{
 			var tagName = Enum.GetName(typeof(MessageFlags), packet.Tag) ?? "Unknown";
 			Console.ForegroundColor = ConsoleColor.White;
-			Console.WriteLine($"{source,-15} To Server: {packet.Tag,-2} {tagName}");
+			Debug.WriteLine($"{source,-15} To Server: {packet.Tag,-2} {tagName}");
 
 			switch ((MessageFlags)packet.Tag)
 			{
 				case MessageFlags.HostGame:
-					Console.WriteLine($"- GameInfo Length {packet.ReadBytesAndSize().Length}");
+					Debug.WriteLine($"- GameInfo Length {packet.ReadBytesAndSize().Length}");
 					break;
 				case MessageFlags.JoinGame:
-					Console.WriteLine($"- GameCode        {packet.ReadInt32()}");
-					Console.WriteLine($"- MapPurchase     {packet.ReadPackedUInt32()}");
+					Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
+					Debug.WriteLine($"- MapPurchase     {packet.ReadPackedUInt32()}");
 					break;
 				case MessageFlags.GameData:
 					HandleGameData(false, packet);
@@ -139,18 +140,18 @@ namespace AmongUsProxy
 		// InnerNetClient_HandleGameData
 		public static void HandleGameData(bool toPlayer, IMessageReader packet)
 		{
-			Console.WriteLine($" - Game Code        {packet.ReadInt32()}");
+			Debug.WriteLine($" - Game Code        {packet.ReadInt32()}");
 			if (toPlayer)
 			{
-				Console.WriteLine($" - Target       {packet.ReadPackedInt32()}");
+				Debug.WriteLine($" - Target       {packet.ReadPackedInt32()}");
 			}
 
-			//Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToArray()));
+			//Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToArray()));
 			// InnerNetClient_HandleGameDataInner
 			while (packet.Position < packet.Length)
 			{
 				using var reader = packet.ReadMessage();
-				Console.WriteLine($" - Tag          {reader.Tag}");
+				Debug.WriteLine($" - Tag          {reader.Tag}");
 				switch ((GameDataTag)reader.Tag)
 				{
 					case GameDataTag.DataFlag:
@@ -163,17 +164,17 @@ namespace AmongUsProxy
 					case GameDataTag.SpawnFlag:
 						// add to Players or smth
 						var prefabID = reader.ReadPackedUInt32();
-						Console.WriteLine($"Prefab {prefabID}");
+						Debug.WriteLine($"Prefab {prefabID}");
 						var clientID = reader.ReadPackedUInt32();
-						Console.WriteLine($"ClientID {clientID}");
+						Debug.WriteLine($"ClientID {clientID}");
 						var flags = reader.ReadByte();
-						Console.WriteLine($"SpawnFlags {flags}");
+						Debug.WriteLine($"SpawnFlags {flags}");
 						var componentCount = reader.ReadPackedUInt32();
-						Console.WriteLine($"Comp Count {componentCount}");
+						Debug.WriteLine($"Comp Count {componentCount}");
 						for (var i = 0; i < componentCount; i++)
 						{
 							var netId = reader.ReadPackedUInt32();
-							Console.WriteLine($"NetID {netId}");
+							Debug.WriteLine($"NetID {netId}");
 							using var objReader = reader.ReadMessage();
 							if (objReader.Length < 0)
 								continue;
@@ -191,7 +192,7 @@ namespace AmongUsProxy
 											var player = Players.EnsureKey(netId);
 											player.Info = playerInfo;
 											player.PlayerId = playerId;
-											Console.WriteLine($"Player {playerId}: {playerInfo.Name}");
+											Debug.WriteLine($"Player {playerId}: {playerInfo.Name}");
 										}
 										break;
 									}
@@ -204,14 +205,14 @@ namespace AmongUsProxy
 										break;
 									}
 								default:
-									Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
+									Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
 										GetRange(objReader.Offset, objReader.Length).ToArray()));
 									break;
 							}
 						}
 						break;
 					default:
-						Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
+						Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
 							GetRange(reader.Offset, reader.Length).ToArray()));
 						break;
 				}
@@ -221,9 +222,9 @@ namespace AmongUsProxy
 		public static void HandleRPC(uint netID, IMessageReader packet)
 		{
 			//TODO: get name from netid, default to netid if not yet seen
-			Console.WriteLine($" - NetID        {GetPlayerName(netID)}");
+			Debug.WriteLine($" - NetID        {GetPlayerName(netID)}");
 			var callID = packet.ReadByte();
-			Console.WriteLine($" - CallID       {callID}");
+			Debug.WriteLine($" - CallID       {callID}");
 			switch ((RPCCallID)callID)
 			{
 				case RPCCallID.SetName:
@@ -244,7 +245,7 @@ namespace AmongUsProxy
 						// - var netId = packet.ReadPackedUInt32();
 						var target = packet.ReadPackedUInt32();
 						Console.WriteLine($"{GetPlayerName(netID)} killed {GetPlayerName(target)}");
-						Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
+						Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
 								GetRange(packet.Offset, packet.Length).ToArray()));
 						break;
 					}
@@ -273,7 +274,7 @@ namespace AmongUsProxy
 							}
 							else
 							{
-								Console.WriteLine($"Player {playerId} not found");
+								Debug.WriteLine($"Player {playerId} not found");
 							}
 						}
 						break;
@@ -287,7 +288,7 @@ namespace AmongUsProxy
 
 		public static string GetPlayerName(uint netID)
 		{
-			if (Players.TryGetValue(netID, out var player) && !string.IsNullOrEmpty(player.Info.Name))
+			if (Players.TryGetValue(netID, out var player))
 			{
 				return $"{player.Info.Name} ({netID})";
 			}

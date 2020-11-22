@@ -110,7 +110,7 @@ namespace AmongUsProxy
                     if (message.Position < message.Length)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("- Did not consume all bytes.");
+                        Debug.WriteLine("- Did not consume all bytes.");
                     }
                 }
             }
