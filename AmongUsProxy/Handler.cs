@@ -74,6 +74,7 @@ namespace AmongUsProxy
 			{
 				case MessageFlags.Redirect:
 				case MessageFlags.ReselectServer:
+					Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToArray()));
 					// packet.Position = packet.Length;
 					break;
 				case MessageFlags.HostGame:
@@ -198,8 +199,8 @@ namespace AmongUsProxy
 									}
 								case 4: // InnerPlayerControl
 									{
-										var isNew = reader.ReadBoolean();
-										var playerId = reader.ReadByte();
+										var isNew = objReader.ReadBoolean();
+										var playerId = objReader.ReadByte();
 										var player = Players.EnsureKey(netId);
 										player.PlayerId = playerId;
 										break;
