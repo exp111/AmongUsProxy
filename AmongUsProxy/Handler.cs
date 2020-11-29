@@ -74,15 +74,32 @@ namespace AmongUsProxy
 			switch ((MessageFlags)packet.Tag)
 			{
 				case MessageFlags.Redirect:
-					long address = packet.ReadUInt32();
-					uint port = packet.ReadUInt16();
-					Console.WriteLine($"- IP              {new IPAddress(address)}");
-					Console.WriteLine($"- Port            {port}");
-					break;
+					{
+						long address = packet.ReadUInt32();
+						uint port = packet.ReadUInt16();
+						Debug.WriteLine($"- IP              {new IPAddress(address)}");
+						Debug.WriteLine($"- Port            {port}");
+						break;
+					}
 				case MessageFlags.ReselectServer:
-					Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToArray()));
-					// packet.Position = packet.Length;
-					break;
+					{
+						Debug.WriteLine($"Byte: {packet.ReadByte()}");
+						var count = packet.ReadPackedUInt32();
+						Debug.WriteLine($"ServerInfo Count: {count}");
+						for (var i = 0; i < count; i++)
+						{
+							var reader = packet.ReadMessage();
+							// ServerInfo Deserialize():
+							var name = reader.ReadString();
+							Debug.WriteLine($"Name: {name}");
+							long address = reader.ReadUInt32();
+							Debug.WriteLine($"IP: {new IPAddress(address)}");
+							var port = reader.ReadUInt16();
+							Debug.WriteLine($"Port: {port}");
+							Debug.WriteLine($"Start: {reader.ReadPackedUInt32()}");
+						}
+						break;
+					}
 				case MessageFlags.HostGame:
 					Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
 					break;
@@ -114,6 +131,8 @@ namespace AmongUsProxy
 					Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
 					Debug.WriteLine($"- Flag            {packet.ReadSByte()}");
 					Debug.WriteLine($"- Value           {packet.ReadBoolean()}");
+					break;
+				default:
 					break;
 			}
 		}
