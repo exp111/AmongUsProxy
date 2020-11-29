@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -73,8 +74,13 @@ namespace AmongUsProxy
 			switch ((MessageFlags)packet.Tag)
 			{
 				case MessageFlags.Redirect:
+					long address = packet.ReadUInt32();
+					uint port = packet.ReadUInt16();
+					Console.WriteLine($"- IP              {new IPAddress(address)}");
+					Console.WriteLine($"- Port            {port}");
+					break;
 				case MessageFlags.ReselectServer:
-					Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToArray()));
+					Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToArray()));
 					// packet.Position = packet.Length;
 					break;
 				case MessageFlags.HostGame:
