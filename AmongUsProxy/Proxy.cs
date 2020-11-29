@@ -23,6 +23,8 @@ namespace AmongUsProxy
 
         private static void Main()
         {
+            Debug.AutoFlush = true;
+            Debug.WriteLine("Start");
             var services = new ServiceCollection();
             services.AddHazel();
 
@@ -54,6 +56,7 @@ namespace AmongUsProxy
                     communicator.SetFilter(filter);
                 }
 
+                Debug.WriteLine("Listening...");
                 communicator.ReceivePackets(0, PacketHandler);
             }
         }

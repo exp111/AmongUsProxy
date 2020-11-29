@@ -111,27 +111,50 @@ namespace AmongUsProxy
 					// packet.Position = packet.Length;
 					break;
 				case MessageFlags.JoinedGame:
-					Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
-					Debug.WriteLine($"- ClientId        {packet.ReadInt32()}");
-					Debug.WriteLine($"- HostId          {packet.ReadInt32()}");
-					var playerCount = packet.ReadPackedUInt32();
-					Debug.WriteLine($"- PlayerCount     {playerCount}");
-					for (var i = 0; i < playerCount; i++)
 					{
-						var playerId = packet.ReadPackedUInt32();
-						Debug.WriteLine($"-     PlayerId    {playerId}");
-						// do we need those PlayerIds?
-						/*if (!Clients.ContainsKey(playerId))
+						Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
+						Debug.WriteLine($"- ClientId        {packet.ReadInt32()}");
+						Debug.WriteLine($"- HostId          {packet.ReadInt32()}");
+						var playerCount = packet.ReadPackedUInt32();
+						Debug.WriteLine($"- PlayerCount     {playerCount}");
+						for (var i = 0; i < playerCount; i++)
 						{
-							Clients[playerId] = new Client();
-						}*/
+							var playerId = packet.ReadPackedUInt32();
+							Debug.WriteLine($"-     PlayerId    {playerId}");
+							// do we need those PlayerIds?
+							/*if (!Clients.ContainsKey(playerId))
+							{
+								Clients[playerId] = new Client();
+							}*/
+						}
+						break;
 					}
-					break;
 				case MessageFlags.AlterGame:
 					Debug.WriteLine($"- GameCode        {packet.ReadInt32()}");
 					Debug.WriteLine($"- Flag            {packet.ReadSByte()}");
 					Debug.WriteLine($"- Value           {packet.ReadBoolean()}");
 					break;
+				case MessageFlags.GetGameListV2:
+					{
+						var reader = packet.ReadMessage();
+						while (reader.Position < reader.Length)
+						{
+							var objReader = reader.ReadMessage();
+							// GameListing Deserialize
+							var ip = objReader.ReadInt32();
+							var port = objReader.ReadUInt16();
+							var gameId = objReader.ReadInt32();
+							var hostName = objReader.ReadString();
+							var playerCount = objReader.ReadByte();
+							var age = objReader.ReadPackedUInt32();
+							var mapId = objReader.ReadByte();
+							var numImpostors = objReader.ReadByte();
+							var maxPlayers = objReader.ReadByte();
+							Debug.WriteLine($"Game: {hostName}");
+						} 
+
+						break;
+					}
 				default:
 					break;
 			}
@@ -158,7 +181,6 @@ namespace AmongUsProxy
 					break;
 				case MessageFlags.GameDataTo:
 					HandleGameData(true, packet);
-					//Console.WriteLine("- GameCode        " + packet.ReadInt32());                    // packet.Position = packet.Length;
 					break;
 			}
 		}
