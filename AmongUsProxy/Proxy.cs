@@ -100,21 +100,28 @@ namespace AmongUsProxy
                         break;
                     }
 
-                    using var message = reader.ReadMessage();
-                    if (isSent)
+                    try
                     {
-                        Handler.HandleToServer(ipSrc, message);
-                    }
-                    else
-                    {
-                        Handler.HandleToClient(ipSrc, message);
-                    }
+                        using var message = reader.ReadMessage();
+                        if (isSent)
+                        {
+                            Handler.HandleToServer(ipSrc, message);
+                        }
+                        else
+                        {
+                            Handler.HandleToClient(ipSrc, message);
+                        }
 
-                    if (message.Position < message.Length)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Debug.WriteLine("- Did not consume all bytes.");
-                    }
+                        if (message.Position < message.Length)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Debug.WriteLine("- Did not consume all bytes.");
+                        }
+                    } 
+                    catch (Exception e)
+					{
+                        Debug.WriteLine($"[TO {(isSent ? "SERVER" : "CLIENT")}] threw Exception: {e}");
+					}
                 }
             }
         }
