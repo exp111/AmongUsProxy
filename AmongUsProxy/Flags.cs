@@ -51,6 +51,7 @@ namespace AmongUsProxy
 		EnterVent = 0x13,
 		ExitVent = 0x14,
 		CheckForEndVoting = 0x17,
+		CastVote = 0x18,
 		PlayerInfo = 0x1e,
 	}
 }

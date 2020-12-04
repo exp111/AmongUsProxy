@@ -183,6 +183,9 @@ namespace AmongUsProxy
 				case MessageFlags.GameDataTo:
 					HandleGameData(true, packet);
 					break;
+				case MessageFlags.EndGame:
+					Players.Clear();
+					break;
 			}
 		}
 
@@ -351,6 +354,9 @@ namespace AmongUsProxy
 						}
 						break;
 					}
+				case RPCCallID.CastVote:
+					//TODO: do we get the vote person?
+					break;
 				default:
 					//Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
 					//		GetRange(packet.Offset, packet.Length).ToArray()));
