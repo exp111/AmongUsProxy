@@ -52,6 +52,7 @@ namespace AmongUsProxy
 	{
 		public byte PlayerId;
 		public PlayerInfo Info = new PlayerInfo();
+		public uint ClientId;
 
 		public void SetName(string name)
 		{
@@ -62,7 +63,7 @@ namespace AmongUsProxy
 	class Handler
 	{
 		// NetId to PlayerControl
-		private static readonly Dictionary<uint, PlayerControl> Players = new Dictionary<uint, PlayerControl>();
+		private static readonly Dictionary<uint, PlayerControl> Players = new();
 
 		// InnerNetClient_HandleMessage
 		public static void HandleToClient(string source, IMessageReader packet)
@@ -203,63 +204,86 @@ namespace AmongUsProxy
 				switch ((GameDataTag)reader.Tag)
 				{
 					case GameDataTag.DataFlag:
-						//TODO: maybe do smth with Data?
-						break;
-					case GameDataTag.RPCFlag:
-						var netID = reader.ReadPackedUInt32();
-						HandleRPC(netID, reader);
-						break;
-					case GameDataTag.SpawnFlag:
-						// add to Players or smth
-						var prefabID = reader.ReadPackedUInt32();
-						Debug.WriteLine($"Prefab {prefabID}");
-						var clientID = reader.ReadPackedUInt32();
-						Debug.WriteLine($"ClientID {clientID}");
-						var flags = reader.ReadByte();
-						Debug.WriteLine($"SpawnFlags {flags}");
-						var componentCount = reader.ReadPackedUInt32();
-						Debug.WriteLine($"Comp Count {componentCount}");
-						for (var i = 0; i < componentCount; i++)
 						{
+							//TODO: maybe do smth with Data?
 							var netId = reader.ReadPackedUInt32();
-							Debug.WriteLine($"NetID {netId}");
-							using var objReader = reader.ReadMessage();
-							if (objReader.Length < 0)
-								continue;
-
-							// Deserialize
-							switch (prefabID)
+							/*if (Players.TryGetValue(netId, out var player))
 							{
-								case 3: // InnerGameData
-									{
-										var num = objReader.ReadPackedInt32();
-										for (var j = 0; j < num; j++)
-										{
-											var playerId = objReader.ReadByte();
-											var playerInfo = new PlayerInfo(objReader);
-											var player = Players.EnsureKey(netId);
-											player.Info = playerInfo;
-											player.PlayerId = playerId;
-											Debug.WriteLine($"Player {playerId}: {playerInfo.Name}");
-										}
-										break;
-									}
-								case 4: // InnerPlayerControl
-									{
-										var isNew = objReader.ReadBoolean();
-										var playerId = objReader.ReadByte();
-										var player = Players.EnsureKey(netId);
-										player.PlayerId = playerId;
-										break;
-									}
-								default:
-									Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
-										GetRange(objReader.Offset, objReader.Length).ToArray()));
-									break;
-							}
+								Console.WriteLine($"Data for NetID {netId}");
+								Console.WriteLine(HexUtils.HexDump(reader.Buffer.ToList().
+											GetRange(reader.Offset, reader.Length).ToArray()));
+							}*/
+							break;
 						}
+					case GameDataTag.RPCFlag:
+						{
+							var netID = reader.ReadPackedUInt32();
+							HandleRPC(netID, reader);
+							break;
+						}
+					case GameDataTag.SpawnFlag:
+						{
+							// add to Players or smth
+							var prefabID = reader.ReadPackedUInt32();
+							Debug.WriteLine($"Prefab {prefabID}");
+							var clientID = reader.ReadPackedUInt32();
+							Debug.WriteLine($"ClientID {clientID}");
+							var flags = reader.ReadByte();
+							Debug.WriteLine($"SpawnFlags {flags}");
+							var componentCount = reader.ReadPackedUInt32();
+							Debug.WriteLine($"Comp Count {componentCount}");
+							for (var i = 0; i < componentCount; i++)
+							{
+								var netId = reader.ReadPackedUInt32();
+								Debug.WriteLine($"NetID {netId}");
+								using var objReader = reader.ReadMessage();
+								if (objReader.Length < 0)
+									continue;
+
+								// Deserialize
+								switch (prefabID)
+								{
+									case 1: // Meeting
+
+										break;
+									case 3: // InnerGameData
+										{
+											var num = objReader.ReadPackedInt32();
+											for (var j = 0; j < num; j++)
+											{
+												var playerId = objReader.ReadByte();
+												var playerInfo = new PlayerInfo(objReader);
+												var player = Players.EnsureKey(netId);
+												player.Info = playerInfo;
+												player.PlayerId = playerId;
+												player.ClientId = clientID;
+												Debug.WriteLine($"Player {playerId}: {playerInfo.Name} ({netId}, {clientID})");
+											}
+											break;
+										}
+									case 4: // InnerPlayerControl
+										{
+											var isNew = objReader.ReadBoolean();
+											var playerId = objReader.ReadByte();
+											var player = Players.EnsureKey(netId);
+											player.PlayerId = playerId;
+											player.ClientId = clientID;
+											Debug.WriteLine($"New Player {playerId} ({netId}, {clientID})");
+											break;
+										}
+									default:
+										Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
+											GetRange(objReader.Offset, objReader.Length).ToArray()));
+										break;
+								}
+							}
+							break;
+						}
+					case GameDataTag.DespawnFlag:
+						// Delete player? idk
 						break;
 					default:
+						Debug.WriteLine($" - Tag          {reader.Tag}");
 						Debug.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
 							GetRange(reader.Offset, reader.Length).ToArray()));
 						break;
@@ -270,7 +294,7 @@ namespace AmongUsProxy
 		public static void HandleRPC(uint netID, IMessageReader packet)
 		{
 			//TODO: get name from netid, default to netid if not yet seen
-			Debug.WriteLine($" - NetID        {GetPlayerName(netID)}");
+			Debug.WriteLine($" - NetID        {netID}");
 			var callID = packet.ReadByte();
 			Debug.WriteLine($" - CallID       {callID}");
 			switch ((RPCCallID)callID)
@@ -338,7 +362,19 @@ namespace AmongUsProxy
 		{
 			if (Players.TryGetValue(netID, out var player))
 			{
-				return $"{player.Info.Name} ({netID})";
+				var name = player.Info.Name;
+				// Try to find by clientId
+				if (name == string.Empty)
+				{
+					Debug.WriteLine($"Couldn't find {netID} with clientId {player.ClientId}");
+					var alts = Players.Where(p => p.Value.ClientId == player.ClientId && p.Value.Info.Name != string.Empty);
+					if (alts.Count() > 0)
+					{
+						Debug.WriteLine($"Found alternative {alts.First().Key}");
+						name = alts.First().Value.Info.Name;
+					}
+				}
+				return $"{name} ({netID})";
 			}
 			return $"({netID})";
 		}

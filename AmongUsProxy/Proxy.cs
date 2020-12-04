@@ -51,7 +51,17 @@ namespace AmongUsProxy
                 //FIXME: sometimes we use another port
                 //InnerNetClient_SetEndpoint sets port (mostly 22023)
                 //in ServerManager_TrackServerFailure a other port
-                using (var filter = communicator.CreateFilter("udp and port 22023"))
+                using (var filter = communicator.CreateFilter("udp and " +
+                    "(port 22023 or " +
+                    "port 22123 or " +
+                    "port 22223 or " +
+                    "port 22323 or " +
+                    "port 22423 or " +
+                    "port 22523 or " +
+                    "port 22623 or " +
+                    "port 22723 or " +
+                    "port 22823 or " +
+                    "port 22923)"))
                 {
                     communicator.SetFilter(filter);
                 }

@@ -31,7 +31,7 @@ namespace AmongUsProxy
 		DataFlag = 1,
 		RPCFlag = 2,
 		SpawnFlag = 4,
-		F5 = 5,
+		DespawnFlag = 5,
 		F6 = 6,
 		F7 = 7,
 		F8 = 8,
