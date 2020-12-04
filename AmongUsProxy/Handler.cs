@@ -156,6 +156,10 @@ namespace AmongUsProxy
 
 						break;
 					}
+				case MessageFlags.EndGame:
+					Players.Clear();
+					Console.WriteLine("Disconnected");
+					break;
 				default:
 					break;
 			}
@@ -185,6 +189,7 @@ namespace AmongUsProxy
 					break;
 				case MessageFlags.EndGame:
 					Players.Clear();
+					Console.WriteLine("Disconnected");
 					break;
 			}
 		}
@@ -355,8 +360,22 @@ namespace AmongUsProxy
 						break;
 					}
 				case RPCCallID.CastVote:
-					//TODO: do we get the vote person?
-					break;
+					{
+						// You see only your own shit
+						var src = packet.ReadByte();
+						var target = packet.ReadByte();
+						Debug.WriteLine($"{GetPlayerName(netID)} voted for {GetPlayerNameByPlayerId(target)}");
+						break;
+					}
+				case RPCCallID.AddVote:
+					{
+						// Not called uwu
+						var clientId = packet.ReadInt32();
+						var targetClientId = packet.ReadInt32();
+						Debug.WriteLine($"{GetPlayerName(netID)} voted for {GetPlayerNameByClientId(targetClientId)}");
+						break;
+					}
+				//TODO: sabotage
 				default:
 					//Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
 					//		GetRange(packet.Offset, packet.Length).ToArray()));
@@ -383,6 +402,42 @@ namespace AmongUsProxy
 				return $"{name} ({netID})";
 			}
 			return $"({netID})";
+		}
+
+		public static string GetPlayerNameByPlayerId(byte playerId)
+		{
+			var players = Players.Where(p => p.Value.PlayerId == playerId);
+			foreach ((_,var player) in players)
+			{
+				var name = player.Info.Name;
+				// Try to find by clientId
+				if (name == string.Empty)
+				{
+					Debug.WriteLine($"Couldn't find {playerId} with clientId {player.ClientId}");
+					var alts = Players.Where(p => p.Value.ClientId == player.ClientId && p.Value.Info.Name != string.Empty);
+					if (alts.Count() > 0)
+					{
+						Debug.WriteLine($"Found alternative {alts.First().Key}");
+						name = alts.First().Value.Info.Name;
+					}
+				}
+				return $"{name} ({playerId})";
+			}
+			return $"({playerId})";
+		}
+
+		public static string GetPlayerNameByClientId(int clientId)
+		{
+			var players = Players.Where(p => p.Value.ClientId == clientId);
+			foreach ((_, var player) in players)
+			{
+				var name = player.Info.Name;
+				if (name == string.Empty)
+					continue;
+
+				return $"{name} ({clientId})";
+			}
+			return $"({clientId})";
 		}
 	}
 }
