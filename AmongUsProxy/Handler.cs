@@ -157,8 +157,9 @@ namespace AmongUsProxy
 						break;
 					}
 				case MessageFlags.EndGame:
-					Players.Clear();
-					Console.WriteLine("Disconnected");
+					//TODO: EndGame != Disconnected
+					//Players.Clear();
+					//Console.WriteLine("Disconnected");
 					break;
 				default:
 					break;
@@ -188,8 +189,9 @@ namespace AmongUsProxy
 					HandleGameData(true, packet);
 					break;
 				case MessageFlags.EndGame:
-					Players.Clear();
-					Console.WriteLine("Disconnected");
+					//TODO: EndGame != Disconnected
+					//Players.Clear();
+					//Console.WriteLine("Disconnected");
 					break;
 			}
 		}
@@ -375,7 +377,23 @@ namespace AmongUsProxy
 						Debug.WriteLine($"{GetPlayerName(netID)} voted for {GetPlayerNameByClientId(targetClientId)}");
 						break;
 					}
-				//TODO: sabotage
+				case RPCCallID.CloseDoor:
+					{
+						//TODO: never called?
+						var doorType = packet.ReadByte();
+						Console.WriteLine($"{GetPlayerName(netID)} closed door {doorType}");
+						break;
+					}
+				case RPCCallID.SabotageSystem:
+					{
+						//TODO: never called? is  this really sabotage or rather when you repair?
+						var systemType = packet.ReadByte();
+						// ReadNetObject<PlayerControl>
+						var player = packet.ReadPackedUInt32();
+						var amount = packet.ReadByte();
+						Console.WriteLine($"{GetPlayerName(player)} sabotaged System {systemType} with amount {amount}");
+					break;
+					}
 				default:
 					//Console.WriteLine(HexUtils.HexDump(packet.Buffer.ToList().
 					//		GetRange(packet.Offset, packet.Length).ToArray()));
